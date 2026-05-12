@@ -22,6 +22,7 @@ pytest
 - Include tests for behavior changes.
 - Update docs for any install, config, or API changes.
 - Use clear commit messages.
+- By contributing, you agree that your contribution is provided under the repository's current license terms.
 
 ## Release checklist
 

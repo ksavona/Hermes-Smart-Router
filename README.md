@@ -2,7 +2,7 @@
 
 Hermes Smart Router is a terminal-first Hermes plugin that routes prompts to the best available model while prioritizing low cost, subscription preservation, and provider reliability.
 
-This repo is structured for open-source collaboration with clear docs, CI, tests, and one-command installation.
+This repo is structured for community collaboration with clear docs, CI, tests, and one-command installation.
 
 ## One-Line Install
 
@@ -53,6 +53,12 @@ Implementation docs:
 - `docs/` specifications and architecture
 - `tests/` automated tests
 - `.github/workflows/` CI pipeline
+
+## License
+
+This project is source-available under the Hermes Smart Router Free Use No-Resale License 1.0.
+
+You can use, modify, and share the code freely, but you cannot sell the code or sell access to it without prior written permission.
 
 ## Community Notes
 
