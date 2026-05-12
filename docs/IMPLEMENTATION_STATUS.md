@@ -5,16 +5,18 @@
 - Plugin package scaffolded with typed domain models
 - Configuration system with defaults and local YAML persistence
 - Deterministic tier routing baseline
-- Candidate scoring baseline for smart routing
+- Smart auto routing baseline with confidence-threshold fallback to tier routing
 - Provider health state machine baseline and error interpretation
+- Local runtime state store for provider health, routing history, and cost snapshots
 - Notification payload helpers for runtime chat updates
 - CLI commands:
   - `setup`
   - `doctor`
+  - `status`
 - One-line installer and uninstaller scripts
 - CI workflow, linting, and tests
 
-## Phase 1 Gaps (Expected)
+## Phase 1 Deferred To Phase 2
 
 - Live provider adapters are not implemented yet
 - Full Smart Auto Router LLM JSON planner is not implemented yet

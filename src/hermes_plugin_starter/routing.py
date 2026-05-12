@@ -24,6 +24,43 @@ class CandidateScore:
     estimated_cost: float
 
 
+def route_smart_auto(
+    request: RoutingRequest,
+    config: RouterConfig,
+    provider_states: dict[str, ProviderState],
+) -> RoutingDecision:
+    candidates = collect_candidate_models(config)
+    candidates = _filter_candidates_for_provider_rules(candidates, provider_states)
+    flexibility_scores = provider_flexibility_scores(candidates)
+    selected = route_with_scoring(request, candidates, provider_states, flexibility_scores)
+
+    if selected is None:
+        return _fallback_to_tier(request, config, provider_states, "No smart-routing candidate was available.")
+
+    confidence = _confidence_from_score(selected.score)
+    if confidence < config.settings.confidence_threshold:
+        return _fallback_to_tier(
+            request,
+            config,
+            provider_states,
+            f"Smart-routing confidence {confidence} is below threshold {config.settings.confidence_threshold}.",
+        )
+
+    fallback = _next_best_candidate(selected, request, candidates, provider_states, flexibility_scores)
+    return RoutingDecision(
+        selected_provider=selected.provider,
+        selected_model=selected.model,
+        fallback_provider=fallback.provider if fallback else None,
+        fallback_model=fallback.model if fallback else None,
+        routing_reason="Smart auto routing selected the cheapest competent model while preserving provider flexibility.",
+        confidence=confidence,
+        tier_equivalent=map_request_to_tier(request),
+        allow_api_fallback=provider_states[selected.provider].provider_type == ProviderHealthStatus.STANDBY,
+        routing_mode=RoutingMode.SMART_AUTO,
+        estimated_cost=selected.estimated_cost,
+    )
+
+
 def map_request_to_tier(request: RoutingRequest) -> str:
     prompt_len = len(request.prompt)
 
@@ -121,6 +158,35 @@ def route_with_scoring(
     return scored[0]
 
 
+def collect_candidate_models(config: RouterConfig) -> list[ProviderModel]:
+    seen: set[tuple[str, str]] = set()
+    candidates: list[ProviderModel] = []
+    for tier in config.tiers:
+        for model in (tier.primary, tier.fallback, tier.secondary_fallback):
+            if model is None:
+                continue
+            key = (model.provider, model.model)
+            if key in seen:
+                continue
+            seen.add(key)
+            candidates.append(model)
+    return candidates
+
+
+def provider_flexibility_scores(candidates: list[ProviderModel]) -> dict[str, float]:
+    families: dict[str, set[str]] = {}
+    models: dict[str, set[str]] = {}
+
+    for candidate in candidates:
+        families.setdefault(candidate.provider, set()).add(candidate.model_family)
+        models.setdefault(candidate.provider, set()).add(candidate.model)
+
+    return {
+        provider: min(10.0, float((len(provider_families) * 3) + len(models.get(provider, set()))))
+        for provider, provider_families in families.items()
+    }
+
+
 def _get_tier(tiers: Iterable[TierDefinition], tier_key: str) -> TierDefinition:
     for tier in tiers:
         if tier.tier == tier_key:
@@ -166,6 +232,13 @@ def _escalate_tier(
 
 def _task_fit_score(request: RoutingRequest, model: ProviderModel) -> float:
     capability = model.capability_class.lower()
+    preference = (request.user_preference or "").strip().lower()
+
+    if preference:
+        if preference in {model.provider.lower(), model.model.lower(), model.model_family.lower()}:
+            return 28.0
+        return 6.0
+
     if request.risk_level == TaskRiskLevel.CRITICAL and capability == "premium":
         return 30.0
     if request.requires_reasoning and capability in {"premium", "strong"}:
@@ -187,3 +260,62 @@ def _capability_score(model: ProviderModel) -> float:
         "premium": 24.0,
     }
     return table.get(cap, 10.0)
+
+
+def _filter_candidates_for_provider_rules(
+    candidates: list[ProviderModel],
+    provider_states: dict[str, ProviderState],
+) -> list[ProviderModel]:
+    normal_by_model: dict[str, bool] = {}
+    for candidate in candidates:
+        state = provider_states.get(candidate.provider)
+        if state and state.provider_type == candidate.provider_type and candidate.provider_type != candidate.provider_type.FALLBACK:
+            if state.status in {ProviderHealthStatus.AVAILABLE, ProviderHealthStatus.LIMITED}:
+                normal_by_model[candidate.model] = True
+
+    filtered: list[ProviderModel] = []
+    for candidate in candidates:
+        state = provider_states.get(candidate.provider)
+        if state is None:
+            continue
+        if candidate.provider_type == candidate.provider_type.FALLBACK and normal_by_model.get(candidate.model, False):
+            continue
+        filtered.append(candidate)
+    return filtered
+
+
+def _confidence_from_score(score: float) -> int:
+    return max(45, min(98, int(score * 1.3)))
+
+
+def _fallback_to_tier(
+    request: RoutingRequest,
+    config: RouterConfig,
+    provider_states: dict[str, ProviderState],
+    reason: str,
+) -> RoutingDecision:
+    decision = route_with_tiers(request, config, provider_states)
+    decision.routing_reason = f"{reason} Fell back to tier routing."
+    return decision
+
+
+def _next_best_candidate(
+    selected: CandidateScore,
+    request: RoutingRequest,
+    candidates: list[ProviderModel],
+    provider_states: dict[str, ProviderState],
+    flexibility_scores: dict[str, float],
+) -> CandidateScore | None:
+    scored: list[CandidateScore] = []
+    for model in candidates:
+        if model.provider == selected.provider and model.model == selected.model:
+            continue
+        score = route_with_scoring(request, [model], provider_states, flexibility_scores)
+        if score is not None:
+            scored.append(score)
+
+    if not scored:
+        return None
+
+    scored.sort(key=lambda item: (-item.score, item.estimated_cost, item.provider))
+    return scored[0]

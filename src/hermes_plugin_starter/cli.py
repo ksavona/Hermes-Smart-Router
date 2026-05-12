@@ -4,6 +4,7 @@ import argparse
 from pathlib import Path
 
 from .config import load_router_config
+from .state import RouterStateStore
 
 
 def default_config_path() -> Path:
@@ -21,11 +22,35 @@ def cmd_setup(config_path: Path) -> int:
 
 def cmd_doctor(config_path: Path) -> int:
     cfg = load_router_config(config_path)
+    store = RouterStateStore(config_path.parent)
+    snapshot = store.load_cost_snapshot()
     print("Hermes Smart Router diagnostics")
     print(f"Config loaded: {config_path}")
     print(f"Tier count: {len(cfg.tiers)}")
     enabled = [p.id for p in cfg.providers if p.enabled]
     print(f"Enabled providers: {', '.join(enabled) if enabled else 'none'}")
+    if snapshot:
+        print(f"Tracked runs: {snapshot.get('run_count', 0)}")
+        print(f"Estimated API spend: {snapshot.get('estimated_api_spend', 0.0)}")
+    return 0
+
+
+def cmd_status(config_path: Path) -> int:
+    store = RouterStateStore(config_path.parent)
+    health = store.load_provider_states([])
+    history = store.load_history()
+    snapshot = store.load_cost_snapshot()
+
+    print("Hermes Smart Router status")
+    print(f"History entries: {len(history)}")
+    if snapshot:
+        print(f"Smart auto runs: {snapshot.get('smart_auto_runs', 0)}")
+        print(f"Tier runs: {snapshot.get('tier_runs', 0)}")
+        print(f"Estimated API spend: {snapshot.get('estimated_api_spend', 0.0)}")
+    if health:
+        print("Provider health:")
+        for provider_id, state in sorted(health.items()):
+            print(f"- {provider_id}: {state.status.value}")
     return 0
 
 
@@ -41,6 +66,7 @@ def build_parser() -> argparse.ArgumentParser:
     sub = parser.add_subparsers(dest="command", required=True)
     sub.add_parser("setup", help="Create/migrate config and prepare defaults")
     sub.add_parser("doctor", help="Run baseline diagnostics")
+    sub.add_parser("status", help="Show provider health, routing history, and cost snapshot")
     return parser
 
 
@@ -52,6 +78,8 @@ def main() -> int:
         return cmd_setup(args.config)
     if args.command == "doctor":
         return cmd_doctor(args.config)
+    if args.command == "status":
+        return cmd_status(args.config)
 
     parser.print_help()
     return 1

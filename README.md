@@ -32,9 +32,10 @@ ruff check .
 
 - Routing config schema and defaults
 - Tier routing engine
-- Baseline scoring engine for smart candidate evaluation
+- Smart auto routing baseline with score-based candidate selection
 - Provider health states and error interpretation
-- CLI setup and diagnostics commands
+- Local runtime state store for provider health, history, and cost snapshot tracking
+- CLI setup, diagnostics, and status commands
 - Installer and uninstaller scripts
 
 ## Functional Spec
