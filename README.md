@@ -82,6 +82,24 @@ No. Selling the code, selling hosted access to it, or charging for access where 
 
 No. It is source-available. The code is visible and reusable under the repository license, but resale is restricted.
 
+## Support and Commercial Permission
+
+### Support
+
+For bug reports, feature requests, and general project feedback, use the GitHub Issues page for this repository.
+
+### Commercial permission requests
+
+If you want to sell the code, bundle it into a paid product, or charge for hosted access that depends on this software, you must obtain prior written permission.
+
+Submit that request directly to the repository owner through GitHub and include:
+
+- your name or company name
+- intended commercial use
+- distribution model
+- whether you plan to modify the software
+- expected audience or customer base
+
 ## Community Notes
 
 - Keep pull requests focused and documented.
