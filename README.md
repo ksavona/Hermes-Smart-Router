@@ -60,6 +60,28 @@ This project is source-available under the Hermes Smart Router Free Use No-Resal
 
 You can use, modify, and share the code freely, but you cannot sell the code or sell access to it without prior written permission.
 
+## Licensing FAQ
+
+### Can I use this in my own Hermes setup?
+
+Yes. Personal, internal, research, educational, and community use are allowed.
+
+### Can I modify the code?
+
+Yes. You can modify it and share your modified version as long as it remains free and includes the same license.
+
+### Can I redistribute it to other people?
+
+Yes, if you do not charge for the code or for access to the code.
+
+### Can I sell this plugin or bundle it into a paid product?
+
+No. Selling the code, selling hosted access to it, or charging for access where the primary value is this software is prohibited without prior written permission.
+
+### Is this open source?
+
+No. It is source-available. The code is visible and reusable under the repository license, but resale is restricted.
+
 ## Community Notes
 
 - Keep pull requests focused and documented.
