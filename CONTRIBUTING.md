@@ -27,5 +27,8 @@ pytest
 ## Release checklist
 
 - Bump version in `pyproject.toml` and `manifest.yaml`.
+- Bump runtime metadata if release version changed.
+- Update `CHANGELOG.md`.
 - Verify one-line installer URL is correct.
+- Run `pytest -q` and `ruff check .`.
 - Tag release in GitHub.

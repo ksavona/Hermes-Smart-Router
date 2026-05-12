@@ -1,5 +1,8 @@
 # Hermes Smart Router
 
+![CI](https://github.com/ksavona/Hermes-Smart-Router/actions/workflows/ci.yml/badge.svg)
+![Release](https://github.com/ksavona/Hermes-Smart-Router/actions/workflows/release.yml/badge.svg)
+
 Hermes Smart Router is a terminal-first Hermes plugin that routes prompts to the best available model while prioritizing low cost, subscription preservation, and provider reliability.
 
 This repo is structured for community collaboration with clear docs, CI, tests, and one-command installation.
@@ -45,6 +48,14 @@ Implementation docs:
 - `docs/ARCHITECTURE.md`
 - `docs/INSTALLATION.md`
 - `docs/IMPLEMENTATION_STATUS.md`
+- `docs/RELEASING.md`
+
+## Releases
+
+Tagged releases follow Semantic Versioning.
+
+- `v0.1.0` is the initial public foundation release.
+- Release artifacts are built automatically by GitHub Actions when version tags are pushed.
 
 ## Repository Layout
 
@@ -105,3 +116,4 @@ Submit that request directly to the repository owner through GitHub and include:
 - Keep pull requests focused and documented.
 - Add tests for behavior changes.
 - Prefer deterministic logic for routing guardrails.
+- Review `CHANGELOG.md`, `SECURITY.md`, and `CODE_OF_CONDUCT.md` before opening major contributions.
