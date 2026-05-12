@@ -1,0 +1,5 @@
+name: hermes-smart-router
+version: 0.1.0
+description: Smart routing plugin for Hermes with cost-aware provider selection
+author: hermes-community
+entrypoint: hermes_plugin_starter.plugin:register
