@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "hermes-smart-router"
-version = "0.1.0"
+version = "0.2.0"
 description = "Smart routing plugin for Hermes"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -23,6 +23,9 @@ dependencies = [
 
 [project.scripts]
 hermes-smart-router = "hermes_plugin_starter.cli:main"
+
+[project.entry-points."hermes_agent.plugins"]
+hermes-smart-router = "hermes_smart_router:register"
 
 [project.optional-dependencies]
 dev = [

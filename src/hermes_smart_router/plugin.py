@@ -1,9 +1,7 @@
-from __future__ import annotations
-
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
-
+import time
 from .config import load_router_config, write_default_config
 from .models import RoutingDecision, RoutingMode, RoutingRequest, TaskRiskLevel
 from .routing import route_smart_auto, route_with_tiers
@@ -16,6 +14,9 @@ _PROVIDER_EQUIVALENTS = {
     "google-gemini-cli": "gemini",
     "gemini": "google-gemini-cli",
 }
+
+_AVAILABLE_MODEL_CATALOG_CACHE: tuple[float, dict[str, set[str]]] | None = None
+_AVAILABLE_MODEL_CATALOG_TTL_SECONDS = 60.0
 
 
 def _provider_aliases(provider: str) -> set[str]:
@@ -35,7 +36,6 @@ def _to_runtime_provider_id(provider: str | None) -> str | None:
     normalized = str(provider or "").strip().lower()
     if not normalized:
         return None
-    # Prefer Hermes runtime slugs that can be enforced by route hooks.
     runtime_map = {
         "codex": "openai-codex",
         "openai codex": "openai-codex",
@@ -51,8 +51,20 @@ def _normalize_decision_provider_ids(decision: RoutingDecision) -> RoutingDecisi
     return decision
 
 
-def _load_available_model_catalog() -> dict[str, set[str]]:
-    """Best-effort Hermes runtime catalog: provider -> available model IDs."""
+def _load_available_model_catalog(refresh: bool = False) -> dict[str, set[str]]:
+    """Best-effort Hermes runtime catalog: provider -> available model IDs.
+
+    Discovery is cached briefly because the Hermes model-switch APIs can be
+    slow when forced on every turn.
+    """
+    global _AVAILABLE_MODEL_CATALOG_CACHE
+
+    now = time.time()
+    if not refresh and _AVAILABLE_MODEL_CATALOG_CACHE is not None:
+        cached_at, cached_catalog = _AVAILABLE_MODEL_CATALOG_CACHE
+        if (now - cached_at) < _AVAILABLE_MODEL_CATALOG_TTL_SECONDS:
+            return {provider: set(models) for provider, models in cached_catalog.items()}
+
     try:
         from hermes_cli.model_switch import list_authenticated_providers
         from hermes_cli.models import provider_model_ids
@@ -72,7 +84,7 @@ def _load_available_model_catalog() -> dict[str, set[str]]:
 
         models = {str(m).strip().lower() for m in (row.get("models") or []) if str(m).strip()}
         try:
-            live = provider_model_ids(slug, force_refresh=True)
+            live = provider_model_ids(slug)
             models.update(str(m).strip().lower() for m in live if str(m).strip())
         except Exception:
             pass
@@ -83,8 +95,8 @@ def _load_available_model_catalog() -> dict[str, set[str]]:
         for alias in _provider_aliases(slug):
             catalog.setdefault(alias, set()).update(models)
 
-    return catalog
-
+    _AVAILABLE_MODEL_CATALOG_CACHE = (now, {provider: set(models) for provider, models in catalog.items()})
+    return {provider: set(models) for provider, models in catalog.items()}
 
 @dataclass
 class PluginInfo:
@@ -92,12 +104,11 @@ class PluginInfo:
     version: str
     description: str
 
-
 @dataclass(slots=True)
 class HermesSmartRouterPlugin:
     config_path: Path
     name: str = "hermes-smart-router"
-    version: str = "0.1.0"
+    version: str = "0.2.0"
     description: str = "Smart model routing plugin for Hermes with tier and auto modes"
 
     def route(self, prompt: str, context: dict[str, Any] | None = None) -> RoutingDecision:
@@ -112,7 +123,6 @@ class HermesSmartRouterPlugin:
             risk_level=risk_level_from_context(context),
             user_preference=context.get("user_preference"),
         )
-
         state_store = RouterStateStore(
             self.config_path.parent,
             history_retention_days=cfg.settings.routing_history_retention_days,
@@ -128,8 +138,7 @@ class HermesSmartRouterPlugin:
             for provider in cfg.providers
             if provider.enabled
         ])
-        available_catalog = _load_available_model_catalog()
-
+        available_catalog = _load_available_model_catalog(refresh=bool(context.get("refresh_model_catalog", False)))
         if cfg.settings.routing_mode == RoutingMode.SMART_AUTO:
             decision = route_smart_auto(
                 request=request,
@@ -144,26 +153,21 @@ class HermesSmartRouterPlugin:
                 provider_states=provider_states,
                 available_models=available_catalog,
             )
-
         decision = _normalize_decision_provider_ids(decision)
-
         state_store.save_provider_states(provider_states)
         state_store.append_routing_decision(prompt, decision)
         return decision
-
 
 def create_default_plugin_config(config_path: Path) -> None:
     config_path.parent.mkdir(parents=True, exist_ok=True)
     if not config_path.exists():
         write_default_config(config_path)
 
-
 def resolve_config_path(context: dict[str, Any]) -> Path:
     configured_path = context.get("config_path")
     if configured_path:
         return Path(configured_path)
     return Path.home() / ".hermes" / "plugins" / "hermes-smart-router" / "router_config.yaml"
-
 
 def risk_level_from_context(context: dict[str, Any]) -> TaskRiskLevel:
     raw = context.get("risk_level", TaskRiskLevel.LOW)
@@ -173,11 +177,3 @@ def risk_level_from_context(context: dict[str, Any]) -> TaskRiskLevel:
         return TaskRiskLevel(str(raw).lower())
     except ValueError:
         return TaskRiskLevel.LOW
-
-
-def register(context: dict[str, Any] | None = None) -> HermesSmartRouterPlugin:
-    """Register plugin with Hermes and return a routing-capable plugin instance."""
-    context = context or {}
-    config_path = resolve_config_path(context)
-    create_default_plugin_config(config_path)
-    return HermesSmartRouterPlugin(config_path=config_path)

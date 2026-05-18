@@ -1,5 +1,9 @@
 name: hermes-smart-router
 version: 0.2.0
 description: Smart model routing plugin for Hermes with tier and auto modes
-author: hermes-community
-entrypoint: hermes_smart_router:register
+provides_tools:
+  - route
+provides_hooks:
+  - pre_llm_call
+  - post_llm_call
+  - on_session_end

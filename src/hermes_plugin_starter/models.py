@@ -85,6 +85,7 @@ class TierDefinition:
     primary: ProviderModel
     fallback: ProviderModel
     secondary_fallback: ProviderModel | None = None
+    additional_candidates: list[ProviderModel] = field(default_factory=list)
     allow_escalation: bool = True
     allow_api_fallback: bool = False
 

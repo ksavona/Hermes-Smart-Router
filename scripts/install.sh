@@ -47,14 +47,14 @@ if [[ ! -f "$REGISTRY_FILE" ]]; then
 plugins:
   - name: $PLUGIN_NAME
     path: $TARGET_DIR
-    entrypoint: hermes_plugin_starter.plugin:register
+    entrypoint: hermes_smart_router:register
 EOF
 else
   if ! grep -q "name: $PLUGIN_NAME" "$REGISTRY_FILE"; then
     cat >>"$REGISTRY_FILE" <<EOF
   - name: $PLUGIN_NAME
     path: $TARGET_DIR
-    entrypoint: hermes_plugin_starter.plugin:register
+    entrypoint: hermes_smart_router:register
 EOF
   fi
 fi

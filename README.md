@@ -23,10 +23,101 @@ This installer will:
 ## Local Development
 
 ```bash
-python -m pip install -e .[dev]
+python3 -m pip install -e .[dev]
 pytest
 ruff check .
 ```
+
+## Pricing Accuracy Workflow
+
+Use a dedicated pricing catalog and sync command so router decisions use current costs.
+
+1. Initialize catalog from current config:
+
+```bash
+python3 -m hermes_plugin_starter.cli pricing-init
+```
+
+2. Update catalog entries (provider/model cost, source URL, verified timestamp):
+
+```bash
+$HOME/.hermes/plugins/hermes-smart-router/pricing_catalog.yaml
+```
+
+3. Apply catalog prices to router config:
+
+```bash
+python3 -m hermes_plugin_starter.cli pricing-sync
+```
+
+4. Check coverage/staleness:
+
+```bash
+python3 -m hermes_plugin_starter.cli pricing-report --stale-days 7
+```
+
+5. Optional weekly automation:
+
+```bash
+bash scripts/weekly_pricing_refresh.sh
+```
+
+You can wire a web-enabled updater (LLM/tooling script) by setting:
+
+```bash
+export PRICING_LLM_COMMAND='my-web-llm-cli --json'
+bash scripts/weekly_pricing_refresh.sh
+```
+
+Default behavior without PRICING_LLM_COMMAND:
+
+- The weekly script fetches official OpenAI and Anthropic pricing pages via a text mirror.
+- It generates updates JSON and applies those updates to your pricing catalog.
+- Then it runs pricing-sync and pricing-report.
+
+By default, `scripts/weekly_pricing_refresh.sh` forces a refresh each run.
+Set this to only refresh when due:
+
+```bash
+export PRICING_REFRESH_FORCE=0
+```
+
+Run only the official fetcher step:
+
+```bash
+python3 scripts/fetch_official_pricing.py \
+	--catalog "$HOME/.hermes/plugins/hermes-smart-router/pricing_catalog.yaml" \
+	--out-json "$HOME/.hermes/plugins/hermes-smart-router/pricing_updates_official.json" \
+	--allow-proxy \
+	--use-openrouter
+```
+
+`--use-openrouter` is a low-confidence fallback source for unmatched model names.
+It helps reduce `N/A` entries but should be treated as reference pricing, not official billing.
+
+Standalone updater script usage:
+
+```bash
+python3 scripts/update_pricing_catalog.py \
+	--catalog "$HOME/.hermes/plugins/hermes-smart-router/pricing_catalog.yaml" \
+	--llm-command "$PRICING_LLM_COMMAND"
+```
+
+Alternative (no live LLM call): provide a JSON file containing updates:
+
+```bash
+python3 scripts/update_pricing_catalog.py \
+	--catalog "$HOME/.hermes/plugins/hermes-smart-router/pricing_catalog.yaml" \
+	--input-json /path/to/pricing_updates.json
+```
+
+## Monitor Pricing Gaps Panel
+
+In monitor follow mode, open the menu and choose **View Pricing Gaps & Suggestions**.
+This panel lists visible models with missing prices and suggests closest mapped equivalents
+that can be used to populate the pricing catalog.
+
+Then run the weekly script (manually, cron, or systemd timer).
 
 ## Current Scope (Phase 1)
 

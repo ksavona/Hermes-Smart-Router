@@ -24,6 +24,12 @@ class RouterSettings:
     learning_memory_enabled: bool = True
     cost_tracking_enabled: bool = True
     probe_enabled: bool = True
+    store_full_prompts_for_debug: bool = False
+    routing_history_retention_days: int = 10
+    smart_tier_alignment_enabled: bool = True
+    smart_tier_price_ratio_guard: float = 8.0
+    smart_tier_capability_delta_guard: int = 2
+    smart_tier_recheck_on_divergence: bool = True
 
 
 @dataclass(slots=True)
@@ -58,58 +64,51 @@ def default_tiers() -> list[TierDefinition]:
     return [
         TierDefinition(
             tier="T1",
-            name="Cheap Simple",
-            purpose="Small questions, formatting, basic transforms",
-            primary=ProviderModel("ollama", "qwen-local", ProviderType.NORMAL, 1, 0.0, 300, "cheap", "qwen"),
-            fallback=ProviderModel("gemini", "flash", ProviderType.NORMAL, 2, 0.0, 500, "cheap", "gemini"),
+            name="Fast Draft",
+            purpose="Quick short-form drafts and simple summaries",
+            primary=ProviderModel("copilot", "gpt-5-mini", ProviderType.NORMAL, 1, 0.00001, 150, "cheap", "gpt"),
+            fallback=ProviderModel("codex", "gpt-5.4-mini", ProviderType.NORMAL, 2, 0.00005, 200, "cheap", "gpt"),
             allow_api_fallback=False,
         ),
         TierDefinition(
             tier="T2",
             name="Fast General",
             purpose="Summaries and short analysis",
-            primary=ProviderModel("gemini", "flash", ProviderType.NORMAL, 1, 0.0, 500, "general", "gemini"),
-            fallback=ProviderModel("codex", "gpt-5-mini", ProviderType.NORMAL, 2, 0.0, 650, "general", "gpt"),
+            primary=ProviderModel("codex", "gpt-5.4", ProviderType.NORMAL, 1, 0.0001, 200, "general", "gpt"),
+            fallback=ProviderModel("copilot", "gpt-5.4", ProviderType.NORMAL, 2, 0.0001, 250, "general", "gpt"),
             allow_api_fallback=False,
         ),
         TierDefinition(
             tier="T3",
             name="Balanced",
             purpose="Normal coding and planning",
-            primary=ProviderModel("codex", "gpt-5.4", ProviderType.NORMAL, 1, 0.0, 900, "balanced", "gpt"),
-            fallback=ProviderModel("copilot", "gpt-5.4", ProviderType.NORMAL, 2, 0.0, 900, "balanced", "gpt"),
+            primary=ProviderModel("codex", "gpt-5.4", ProviderType.NORMAL, 1, 0.0001, 250, "balanced", "gpt"),
+            fallback=ProviderModel("copilot", "gpt-5.4", ProviderType.NORMAL, 2, 0.0001, 300, "balanced", "gpt"),
             allow_api_fallback=False,
         ),
         TierDefinition(
             tier="T4",
             name="Strong",
             purpose="Complex coding and multi-step reasoning",
-            primary=ProviderModel("copilot", "claude-sonnet", ProviderType.NORMAL, 1, 0.0, 1200, "strong", "claude"),
-            fallback=ProviderModel("codex", "gpt-5.4", ProviderType.NORMAL, 2, 0.0, 1000, "strong", "gpt"),
-            allow_api_fallback=True,
+            primary=ProviderModel("copilot", "claude-sonnet-4.6", ProviderType.NORMAL, 1, 0.0003, 400, "strong", "claude"),
+            fallback=ProviderModel("codex", "gpt-5.4", ProviderType.NORMAL, 2, 0.0001, 350, "balanced", "gpt"),
+            allow_api_fallback=False,
         ),
         TierDefinition(
             tier="T5",
             name="Premium",
             purpose="Critical and high-risk outputs",
-            primary=ProviderModel("codex", "gpt-5.4", ProviderType.NORMAL, 1, 0.0, 1100, "premium", "gpt"),
-            fallback=ProviderModel("copilot", "gpt-5.4", ProviderType.NORMAL, 2, 0.0, 1100, "premium", "gpt"),
-            secondary_fallback=ProviderModel(
-                "openai_api", "gpt-5.4", ProviderType.FALLBACK, 3, 0.85, 1300, "premium", "gpt"
-            ),
-            allow_api_fallback=True,
+            primary=ProviderModel("codex", "gpt-5.5", ProviderType.NORMAL, 1, 0.001, 500, "premium", "gpt"),
+            fallback=ProviderModel("copilot", "gpt-5.4", ProviderType.NORMAL, 2, 0.0001, 300, "premium", "gpt"),
+            allow_api_fallback=False,
         ),
     ]
 
 
 def default_router_config() -> RouterConfig:
     providers = [
-        ProviderConfig("codex", "ChatGPT Codex", ProviderType.NORMAL, "oauth", True, False, False),
+        ProviderConfig("codex", "OpenAI Codex", ProviderType.NORMAL, "oauth", True, False, False),
         ProviderConfig("copilot", "GitHub Copilot", ProviderType.NORMAL, "oauth", True, True, False),
-        ProviderConfig("gemini", "Gemini OAuth", ProviderType.NORMAL, "oauth", True, False, False),
-        ProviderConfig("ollama", "Ollama Local", ProviderType.NORMAL, "local", True, False, False),
-        ProviderConfig("deepseek_api", "DeepSeek API", ProviderType.FALLBACK, "api_key", True, False, True),
-        ProviderConfig("openai_api", "OpenAI API", ProviderType.FALLBACK, "api_key", True, False, True),
     ]
     return RouterConfig(providers=providers, tiers=default_tiers())
 
@@ -159,6 +158,12 @@ def _from_dict(raw: dict) -> RouterConfig:
         learning_memory_enabled=bool(settings_raw.get("learning_memory_enabled", True)),
         cost_tracking_enabled=bool(settings_raw.get("cost_tracking_enabled", True)),
         probe_enabled=bool(settings_raw.get("probe_enabled", True)),
+        store_full_prompts_for_debug=bool(settings_raw.get("store_full_prompts_for_debug", False)),
+        routing_history_retention_days=int(settings_raw.get("routing_history_retention_days", 10)),
+        smart_tier_alignment_enabled=bool(settings_raw.get("smart_tier_alignment_enabled", True)),
+        smart_tier_price_ratio_guard=float(settings_raw.get("smart_tier_price_ratio_guard", 8.0)),
+        smart_tier_capability_delta_guard=int(settings_raw.get("smart_tier_capability_delta_guard", 2)),
+        smart_tier_recheck_on_divergence=bool(settings_raw.get("smart_tier_recheck_on_divergence", True)),
     )
 
     providers = [
@@ -186,6 +191,7 @@ def _from_dict(raw: dict) -> RouterConfig:
     tiers: list[TierDefinition] = []
     for t in raw.get("tiers", []):
         secondary = t.get("secondary_fallback")
+        candidates = t.get("candidates") or t.get("additional_candidates") or []
         tiers.append(
             TierDefinition(
                 tier=t["tier"],
@@ -194,6 +200,11 @@ def _from_dict(raw: dict) -> RouterConfig:
                 primary=_model_from_dict(t["primary"]),
                 fallback=_model_from_dict(t["fallback"]),
                 secondary_fallback=_model_from_dict(secondary) if secondary else None,
+                additional_candidates=[
+                    _model_from_dict(c)
+                    for c in candidates
+                    if isinstance(c, dict) and c.get("provider") and c.get("model")
+                ],
                 allow_escalation=bool(t.get("allow_escalation", True)),
                 allow_api_fallback=bool(t.get("allow_api_fallback", False)),
             )
@@ -206,10 +217,12 @@ def _from_dict(raw: dict) -> RouterConfig:
 
 
 def _model_from_dict(data: dict) -> ProviderModel:
+    provider_type_raw = str(data.get("provider_type", ProviderType.NORMAL.value)).strip().lower()
+    provider_type = ProviderType(provider_type_raw) if provider_type_raw in {"normal", "fallback"} else ProviderType.NORMAL
     return ProviderModel(
         provider=data["provider"],
         model=data["model"],
-        provider_type=ProviderType(data.get("provider_type", ProviderType.NORMAL.value)),
+        provider_type=provider_type,
         priority=int(data.get("priority", 10)),
         estimated_cost_per_1k=float(data.get("estimated_cost_per_1k", 0.0)),
         latency_ms_estimate=int(data.get("latency_ms_estimate", 0)),

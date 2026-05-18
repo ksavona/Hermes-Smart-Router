@@ -1,0 +1,182 @@
+settings:
+  routing_mode: smart_auto
+  auto_fallback_to_tier: true
+  timezone: UTC
+  confidence_threshold: 75
+  allow_api_fallback: false
+  require_confirmation_for_paid_api: true
+  max_api_spend_per_run: 0.5
+  daily_api_spend_warning: 5.0
+  weekly_api_spend_warning: 20.0
+  provider_preservation_enabled: true
+  learning_memory_enabled: true
+  cost_tracking_enabled: true
+  probe_enabled: true
+  store_full_prompts_for_debug: true
+  routing_history_retention_days: 10
+providers:
+- id: codex
+  name: OpenAI Codex
+  type: normal
+  auth_type: oauth
+  enabled: true
+  preserve_for_unique_models: false
+  standby_only: false
+- id: copilot
+  name: GitHub Copilot
+  type: normal
+  auth_type: oauth
+  enabled: true
+  preserve_for_unique_models: true
+  standby_only: false
+preferences:
+  prefer_local_first: false
+  prefer_cheapest_competent: true
+  require_prompt_before_paid_api: false
+  hide_fallback_providers: true
+  pin_tier_models: {}
+tiers:
+- tier: T1
+  name: Fast Draft
+  purpose: Quick short-form drafts, simple questions, basic transforms
+  primary:
+    provider: copilot
+    model: gpt-4o-mini
+    provider_type: Normal
+    priority: 1
+    estimated_cost_per_1k: 0.00015
+    latency_ms_estimate: 150
+    capability_class: fast
+    model_family: gpt
+  fallback:
+    provider: codex
+    model: gpt-5.4-mini
+    provider_type: normal
+    priority: 2
+    estimated_cost_per_1k: 0.00075
+    latency_ms_estimate: 200
+    capability_class: cheap
+    model_family: gpt
+  secondary_fallback:
+    provider: copilot
+    model: gemini-2.5-pro
+    provider_type: normal
+    priority: 3
+    estimated_cost_per_1k: 0.001
+    latency_ms_estimate: 200
+    capability_class: general
+    model_family: gemini
+  allow_escalation: false
+  allow_api_fallback: false
+- tier: T2
+  name: Fast General
+  purpose: Summaries and short analysis (prompts > 1000 chars)
+  primary:
+    provider: copilot
+    model: gpt-5.4
+    provider_type: normal
+    priority: 1
+    estimated_cost_per_1k: 0.0025
+    latency_ms_estimate: 250
+    capability_class: general
+    model_family: gpt
+  fallback:
+    provider: codex
+    model: gpt-5.4
+    provider_type: normal
+    priority: 2
+    estimated_cost_per_1k: 0.0025
+    latency_ms_estimate: 250
+    capability_class: general
+    model_family: gpt
+  secondary_fallback:
+    provider: copilot
+    model: claude-haiku-4.5
+    provider_type: normal
+    priority: 3
+    estimated_cost_per_1k: 0.001
+    latency_ms_estimate: 200
+    capability_class: general
+    model_family: claude
+  allow_escalation: false
+  allow_api_fallback: false
+- tier: T3
+  name: Balanced
+  purpose: Normal coding and planning
+  primary:
+    provider: codex
+    model: gpt-5.4
+    provider_type: normal
+    priority: 1
+    estimated_cost_per_1k: 0.0025
+    latency_ms_estimate: 250
+    capability_class: balanced
+    model_family: gpt
+  fallback:
+    provider: copilot
+    model: gpt-5.4
+    provider_type: normal
+    priority: 2
+    estimated_cost_per_1k: 0.0025
+    latency_ms_estimate: 300
+    capability_class: balanced
+    model_family: gpt
+  secondary_fallback:
+    provider: codex
+    model: gpt-5.2
+    provider_type: normal
+    priority: 2
+    estimated_cost_per_1k: 0.00175
+    latency_ms_estimate: 200
+    capability_class: general
+    model_family: gpt
+  allow_escalation: false
+  allow_api_fallback: false
+- tier: T4
+  name: Strong
+  purpose: Complex coding and multi-step reasoning
+  primary:
+    provider: copilot
+    model: claude-sonnet-4.6
+    provider_type: normal
+    priority: 1
+    estimated_cost_per_1k: 0.003
+    latency_ms_estimate: 400
+    capability_class: strong
+    model_family: claude
+  fallback:
+    provider: codex
+    model: gpt-5.4
+    provider_type: normal
+    priority: 2
+    estimated_cost_per_1k: 0.0025
+    latency_ms_estimate: 350
+    capability_class: balanced
+    model_family: gpt
+  secondary_fallback: null
+  allow_escalation: false
+  allow_api_fallback: false
+- tier: T5
+  name: Premium
+  purpose: Critical and high-risk outputs
+  primary:
+    provider: codex
+    model: gpt-5.5
+    provider_type: normal
+    priority: 1
+    estimated_cost_per_1k: 0.005
+    latency_ms_estimate: 500
+    capability_class: premium
+    model_family: gpt
+  fallback:
+    provider: copilot
+    model: gpt-5.4
+    provider_type: normal
+    priority: 2
+    estimated_cost_per_1k: 0.0025
+    latency_ms_estimate: 300
+    capability_class: premium
+    model_family: gpt
+  secondary_fallback: null
+  allow_escalation: false
+  allow_api_fallback: false
